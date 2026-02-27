@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RFF — Cash Forecast 2026–2028</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080a0e;
+    --surface: #0f1116;
+    --surface2: #151820;
+    --border: #1c2030;
+    --accent: #00e5ff;
+    --accent2: #b4ff6e;
+    --warn: #ff6b6b;
+    --neutral: #4a5270;
+    --text: #dde2f0;
+    --muted: #4a5270;
+    --green: #4ade80;
+    --red: #ff6b6b;
+    --yellow: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; }
+  
+  /* grid grain */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: 
+      linear-gradient(rgba(0,229,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.015) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+
+  header { padding: 36px 0 28px; border-bottom: 1px solid var(--border); margin-bottom: 36px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  h1 { font-family: 'Syne', sans-serif; font-size: clamp(24px, 4vw, 44px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.05; }
+  h1 em { color: var(--muted); font-style: normal; }
+  .subhead { font-size: 11px; color: var(--muted); margin-top: 6px; letter-spacing: 0.04em; }
+
+  /* Year pills */
+  .year-tabs { display: flex; gap: 4px; }
+  .ytab {
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 7px 18px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border);
+    background: none; color: var(--muted); transition: all 0.15s;
+  }
+  .ytab.active { background: var(--accent); color: #080a0e; border-color: var(--accent); }
+  .ytab:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+
+  /* Summary strip */
+  .summary-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  @media(max-width:700px){ .summary-strip { grid-template-columns: repeat(2, 1fr); } }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 16px; position: relative; overflow: hidden; }
+  .stat-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; }
+  .stat-box.pos::before { background: var(--green); }
+  .stat-box.neg::before { background: var(--red); }
+  .stat-box.warn::before { background: var(--yellow); }
+  .stat-box.info::before { background: var(--accent); }
+  .stat-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .stat-val { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; line-height: 1; }
+  .stat-sub { font-size: 10px; color: var(--muted); margin-top: 5px; }
+
+  /* Section */
+  .section-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; margin-top: 32px; }
+  .section-hd-label { font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .section-hd-line { flex: 1; height: 1px; background: var(--border); }
+
+  /* Main cash chart card */
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .chart-title { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .chart-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+  .leg-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* SVG chart */
+  .chart-svg-wrap { width: 100%; overflow: hidden; }
+  svg { font-family: 'DM Mono', monospace; overflow: visible; }
+
+  /* Month labels */
+  .month-labels { display: flex; padding: 0 4px; margin-top: 6px; }
+  .m-label { flex: 1; text-align: center; font-size: 9px; color: var(--muted); }
+
+  /* 3-col grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media(max-width:700px){ .grid-2 { grid-template-columns: 1fr; } }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  @media(max-width:800px){ .grid-3 { grid-template-columns: 1fr 1fr; } }
+  @media(max-width:500px){ .grid-3 { grid-template-columns: 1fr; } }
+
+  /* Waterfall (monthly cashflow) */
+  .wf-chart { display: flex; align-items: flex-end; gap: 3px; height: 110px; padding: 0 4px; }
+  .wf-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .wf-bar-wrap { width: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+  .wf-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; transition: opacity 0.2s; cursor: default; }
+  .wf-bar:hover { opacity: 0.75; }
+  .wf-lbl { font-size: 8px; color: var(--muted); margin-top: 3px; }
+
+  /* Table */
+  .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  th { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; text-align: right; background: var(--bg); border-bottom: 1px solid var(--border); }
+  th:first-child { text-align: left; }
+  td { font-size: 11px; padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td:first-child { text-align: left; color: var(--muted); font-size: 10px; }
+  tr:last-child td { border-bottom: none; }
+  tr.total-row td { color: var(--accent); font-weight: 500; background: rgba(0,229,255,0.03); }
+  tr.divider td { height: 4px; background: var(--bg); padding: 0; border-bottom: 1px solid var(--border); }
+  .neg-val { color: var(--red); }
+  .pos-val { color: var(--green); }
+  .warn-val { color: var(--yellow); }
+
+  /* Runway meter */
+  .runway-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .runway-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .runway-track { background: var(--border); border-radius: 4px; height: 10px; overflow: hidden; margin-bottom: 8px; }
+  .runway-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .runway-months { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-bottom: 20px; }
+
+  /* Alert box */
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 11px; line-height: 1.5; margin-bottom: 12px; border-left: 3px solid; }
+  .alert.red { background: rgba(255,107,107,0.08); border-color: var(--red); color: #fca5a5; }
+  .alert.yellow { background: rgba(251,191,36,0.08); border-color: var(--yellow); color: #fde68a; }
+  .alert.green { background: rgba(74,222,128,0.08); border-color: var(--green); color: #86efac; }
+
+  footer { border-top: 1px solid var(--border); padding: 20px 0; margin-top: 40px; display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); letter-spacing: 0.06em; flex-wrap: wrap; gap: 8px; }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .stat-box { animation: fadeUp 0.35s ease both; }
+  .stat-box:nth-child(1){animation-delay:.05s} .stat-box:nth-child(2){animation-delay:.1s}
+  .stat-box:nth-child(3){animation-delay:.15s} .stat-box:nth-child(4){animation-delay:.2s}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-row">
+      <div>
+        <div class="eyebrow">RFF · Fractional C-Suite</div>
+        <h1>Cash Forecast<br><em>2026 — 2028</em></h1>
+        <div class="subhead">Monthly cash position · Operating, investing &amp; financing flows · Runway analysis</div>
+      </div>
+      <div>
+        <div class="year-tabs">
+          <button class="ytab active" onclick="setYear(2026,this)">2026</button>
+          <button class="ytab" onclick="setYear(2027,this)">2027</button>
+          <button class="ytab" onclick="setYear(2028,this)">2028</button>
+          <button class="ytab" onclick="setYear('all',this)">All 36M</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="summaryStrip" class="summary-strip"></div>
+
+  <div class="section-hd"><div class="section-hd-label">Cash Position</div><div class="section-hd-line"></div></div>
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>Monthly Ending Cash Balance (€)</span>
+      <div class="chart-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>Cash balance</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--red);opacity:.5"></div>Negative zone</div>
+      </div>
+    </div>
+    <div class="chart-svg-wrap" id="cashLineChart"></div>
+    <div id="monthLabels" class="month-labels"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title"><span>Monthly Net Cash Change (€)</span></div>
+      <div class="wf-chart" id="netChangeChart"></div>
+      <div id="netChangeLabels" class="month-labels" style="margin-top:0"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span>Cash Flow Components</span></div>
+      <div id="componentsChart"></div>
+    </div>
+  </div>
+
+  <div class="section-hd"><div class="section-hd-label">Cash Flow Statement</div><div class="section-hd-line"></div></div>
+  <div class="tbl-wrap"><table id="cfTable"></table></div>
+
+  <div class="section-hd"><div class="section-hd-label">Runway &amp; Alerts</div><div class="section-hd-line"></div></div>
+  <div class="grid-2">
+    <div class="runway-card" id="runwayCard"></div>
+    <div id="alertsCard"></div>
+  </div>
+
+  <footer>
+    <span>RFF Cash Forecast · Source: RFF_Ideation.xlsx</span>
+    <span>All figures in EUR excl. VAT · Starting cash: €5,000 (equity injection €20,000)</span>
+  </footer>
+</div>
+
+<script>
+// ─── DATA FROM EXCEL ──────────────────────────────────────────────────────────
+const raw = {
+  2026: {
+    revenue:    [20000,20000,30000,21750,21750,34250,33000,33000,55500,53250,53250,85750],
+    opCash:     [-1417,-4453,2464,7248,-362,4307,-10763,-18729,-15486,6105,-2378,2884],
+    invCash:    [-7000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000],
+    finCash:    [0,0,0,0,0,0,0,0,0,0,0,0],
+    netChange:  [-8417,-6453,464,5248,-2362,2307,-12763,-20729,-17486,4105,-4378,884],
+    cashBegin:  [5000,-3417,-9870,-9406,-4159,-6520,-4213,-16976,-37705,-55191,-51086,-55463],
+    cashEnd:    [-3417,-9870,-9406,-4159,-6520,-4213,-16976,-37705,-55191,-51086,-55463,-54580],
+    ebit:       [-896,-930,9037,254,220,12687,-20686,-20719,-1145,-4578,-4612,27855],
+  },
+  2027: {
+    revenue:    [86638,96638,108725,121575,131162,132838,132838,142838,152425,154100,154100,214100],
+    opCash:     [27032,11943,4223,30893,-11309,820,31493,20354,7147,45003,24562,24830],
+    invCash:    [-7000,-7000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000],
+    finCash:    [0,0,0,0,0,0,0,0,0,0,0,0],
+    netChange:  [20032,4943,2223,28893,-13309,-1180,29493,18354,5147,43003,22562,22830],
+    cashBegin:  [-54580,-34548,-29605,-27382,1511,-11799,-12979,16514,34868,40016,83018,105580],
+    cashEnd:    [-34548,-29605,-27382,1511,-11799,-12979,16514,34868,40016,83018,105580,128410],
+    ebit:       [3354,13237,24792,16273,13072,10329,10296,20262,26863,19516,19483,79449],
+  },
+  2028: {
+    revenue:    [229949,239949,252391,266133,276075,278459,278459,288459,298401,300784,300784,300784],
+    opCash:     [85785,42261,19026,85997,4647,28004,106080,72848,39864,111291,68776,27237],
+    invCash:    [-12000,-7000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000,-2000],
+    finCash:    [0,0,0,0,0,0,0,0,0,0,0,0],
+    netChange:  [73785,35261,17026,83997,2647,26004,104080,70848,37864,109291,66776,25237],
+    cashBegin:  [128410,202195,237456,254482,338479,341127,367130,471211,542058,579922,689213,755989],
+    cashEnd:    [202195,237456,254482,338479,341127,367130,471211,542058,579922,689213,755989,781226],
+    ebit:       [33698,43582,55490,48172,57580,59281,59247,69214,78622,59966,59932,59899],
+  }
+};
+
+const allCashEnd = [
+  ...raw[2026].cashEnd,
+  ...raw[2027].cashEnd,
+  ...raw[2028].cashEnd,
+];
+const allNetChange = [
+  ...raw[2026].netChange,
+  ...raw[2027].netChange,
+  ...raw[2028].netChange,
+];
+const allRevenue = [
+  ...raw[2026].revenue,
+  ...raw[2027].revenue,
+  ...raw[2028].revenue,
+];
+const allOpCash = [
+  ...raw[2026].opCash,
+  ...raw[2027].opCash,
+  ...raw[2028].opCash,
+];
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ALL_LABELS = [
+  ...MONTHS.map(m=>m+"'26"),
+  ...MONTHS.map(m=>m+"'27"),
+  ...MONTHS.map(m=>m+"'28"),
+];
+const SHORT_ALL = [
+  ...MONTHS.map((m,i)=>i%3===0?m:""),
+  ...MONTHS.map((m,i)=>i%3===0?m:""),
+  ...MONTHS.map((m,i)=>i%3===0?m:""),
+];
+
+let currentYear = 2026;
+
+function fmt(n, dec=0){
+  if(n===null||n===undefined) return '—';
+  const s = Math.abs(n)>=1e6 ? (n/1e6).toFixed(2)+'M' : Math.abs(n)>=1e3 ? (n>=0?'€':'−€')+Math.round(Math.abs(n)).toLocaleString('nl-NL') : (n>=0?'€':'−€')+Math.abs(n).toFixed(dec);
+  if(n<0 && Math.abs(n)>=1e3) return '−€'+Math.round(Math.abs(n)).toLocaleString('nl-NL');
+  return s;
+}
+
+function fmtRaw(n){
+  if(!n && n!==0) return '—';
+  const neg = n < 0;
+  const s = '€'+Math.abs(Math.round(n)).toLocaleString('nl-NL');
+  return neg ? '('+s+')' : s;
+}
+
+function colorVal(n){ return n>=0?'var(--green)':'var(--red)'; }
+
+function setYear(yr, btn){
+  currentYear = yr;
+  document.querySelectorAll('.ytab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function getCashData(){
+  if(currentYear==='all') return { cashEnd: allCashEnd, netChange: allNetChange, opCash: allOpCash, labels: ALL_LABELS, shortLabels: SHORT_ALL, revenue: allRevenue };
+  const d = raw[currentYear];
+  return { cashEnd: d.cashEnd, netChange: d.netChange, opCash: d.opCash, labels: MONTHS, shortLabels: MONTHS.map((m,i)=>i%2===0?m:''), revenue: d.revenue };
+}
+
+// ─── SUMMARY ──────────────────────────────────────────────────────────────────
+function renderSummary(){
+  const strip = document.getElementById('summaryStrip');
+  let html = '';
+
+  if(currentYear==='all'){
+    const minCash = Math.min(...allCashEnd);
+    const endCash = allCashEnd[35];
+    const firstPos = allCashEnd.findIndex(v=>v>0);
+    const totalOpCash = allOpCash.reduce((s,v)=>s+v,0);
+    html = `
+      <div class="stat-box ${endCash>0?'pos':'neg'}">
+        <div class="stat-label">Cash — End 2028</div>
+        <div class="stat-val" style="color:${colorVal(endCash)}">${fmt(endCash)}</div>
+        <div class="stat-sub">Final cash position</div>
+      </div>
+      <div class="stat-box ${minCash>0?'pos':'neg'}">
+        <div class="stat-label">Lowest Cash Point</div>
+        <div class="stat-val" style="color:var(--red)">${fmt(minCash)}</div>
+        <div class="stat-sub">Peak cash need</div>
+      </div>
+      <div class="stat-box ${firstPos>=0?'pos':'warn'}">
+        <div class="stat-label">Cash Turns Positive</div>
+        <div class="stat-val" style="color:var(--accent)">${firstPos>=0 ? ALL_LABELS[firstPos] : 'Not in period'}</div>
+        <div class="stat-sub">${firstPos>=0?'Month '+(firstPos+1)+' of 36':'Needs bridge'}</div>
+      </div>
+      <div class="stat-box ${totalOpCash>0?'pos':'neg'}">
+        <div class="stat-label">Cumulative Op. CF</div>
+        <div class="stat-val" style="color:${colorVal(totalOpCash)}">${fmt(totalOpCash)}</div>
+        <div class="stat-sub">All 36 months</div>
+      </div>
+    `;
+  } else {
+    const d = raw[currentYear];
+    const endCash = d.cashEnd[11];
+    const minCash = Math.min(...d.cashEnd);
+    const negMonths = d.cashEnd.filter(v=>v<0).length;
+    const totalOpCash = d.opCash.reduce((s,v)=>s+v,0);
+    html = `
+      <div class="stat-box ${endCash>0?'pos':'neg'}">
+        <div class="stat-label">Cash End of Year</div>
+        <div class="stat-val" style="color:${colorVal(endCash)}">${fmt(endCash)}</div>
+        <div class="stat-sub">Dec ${currentYear}</div>
+      </div>
+      <div class="stat-box neg">
+        <div class="stat-label">Lowest Cash Point</div>
+        <div class="stat-val" style="color:var(--red)">${fmt(minCash)}</div>
+        <div class="stat-sub">Peak cash need</div>
+      </div>
+      <div class="stat-box ${negMonths>0?'warn':'pos'}">
+        <div class="stat-label">Months Negative</div>
+        <div class="stat-val" style="color:${negMonths>0?'var(--yellow)':'var(--green)'}">${negMonths}/12</div>
+        <div class="stat-sub">${negMonths>0?'Cash bridge needed':'Fully positive'}</div>
+      </div>
+      <div class="stat-box ${totalOpCash>0?'pos':'neg'}">
+        <div class="stat-label">Operating CF Total</div>
+        <div class="stat-val" style="color:${colorVal(totalOpCash)}">${fmt(totalOpCash)}</div>
+        <div class="stat-sub">${currentYear} cumulative</div>
+      </div>
+    `;
+  }
+  strip.innerHTML = html;
+}
+
+// ─── CASH LINE CHART ──────────────────────────────────────────────────────────
+function renderCashLine(){
+  const { cashEnd, labels } = getCashData();
+  const n = cashEnd.length;
+  const W = 900, H = 180, padL = 60, padR = 20, padT = 16, padB = 20;
+  const cW = W - padL - padR;
+  const cH = H - padT - padB;
+
+  const min = Math.min(...cashEnd, 0);
+  const max = Math.max(...cashEnd, 0);
+  const range = max - min || 1;
+
+  function xPos(i){ return padL + (i / (n-1)) * cW; }
+  function yPos(v){ return padT + cH - ((v - min) / range) * cH; }
+
+  const zeroY = yPos(0);
+
+  // Area fill (positive / negative separately)
+  let posPath = '', negPath = '';
+  let posPoints = [], negPoints = [];
+
+  for(let i=0;i<n;i++){
+    const x = xPos(i), y = yPos(cashEnd[i]);
+    posPoints.push([x, Math.min(y, zeroY)]);
+    negPoints.push([x, Math.max(y, zeroY)]);
+  }
+
+  const areaPath = (pts, bottom) => {
+    let d = `M ${pts[0][0]},${pts[0][1]}`;
+    for(let i=1;i<pts.length;i++) d += ` L ${pts[i][0]},${pts[i][1]}`;
+    d += ` L ${pts[pts.length-1][0]},${bottom} L ${pts[0][0]},${bottom} Z`;
+    return d;
+  };
+
+  // Line path
+  let linePath = cashEnd.map((v,i) => `${i===0?'M':'L'} ${xPos(i)},${yPos(v)}`).join(' ');
+
+  // Grid lines
+  const ticks = 4;
+  let gridLines = '';
+  for(let i=0;i<=ticks;i++){
+    const v = min + (range / ticks) * i;
+    const y = yPos(v);
+    gridLines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`;
+    gridLines += `<text x="${padL-6}" y="${y+4}" text-anchor="end" font-size="9" fill="var(--muted)">${fmt(v)}</text>`;
+  }
+
+  // Zero line
+  const zeroLine = `<line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="rgba(255,107,107,0.4)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+
+  // Dots at each point
+  let dots = cashEnd.map((v,i) => `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="3" fill="${v>=0?'var(--accent)':'var(--red)'}" stroke="var(--bg)" stroke-width="1.5"><title>${labels[i]}: ${fmt(v)}</title></circle>`).join('');
+
+  // Month labels on x axis
+  const shortLabels = n > 12 
+    ? cashEnd.map((_,i) => i%3===0 ? ALL_LABELS[i] : '')
+    : MONTHS;
+  
+  const mlabels = shortLabels.map((l,i) => l ? `<text x="${xPos(i)}" y="${H-2}" text-anchor="middle" font-size="8" fill="var(--muted)">${l}</text>` : '').join('');
+
+  document.getElementById('cashLineChart').innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" style="height:${H}px;max-height:${H}px">
+      <defs>
+        <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(0,229,255,0.15)"/>
+          <stop offset="100%" stop-color="rgba(0,229,255,0)"/>
+        </linearGradient>
+        <linearGradient id="negGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(255,107,107,0)"/>
+          <stop offset="100%" stop-color="rgba(255,107,107,0.2)"/>
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      ${zeroLine}
+      <path d="${areaPath(cashEnd.map((v,i)=>[xPos(i), Math.min(yPos(v),zeroY)]), zeroY)}" fill="url(#posGrad)"/>
+      <path d="${areaPath(cashEnd.map((v,i)=>[xPos(i), Math.max(yPos(v),zeroY)]), zeroY)}" fill="url(#negGrad)"/>
+      <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+      ${mlabels}
+    </svg>
+  `;
+}
+
+// ─── NET CHANGE BARS ──────────────────────────────────────────────────────────
+function renderNetChange(){
+  const { netChange, shortLabels } = getCashData();
+  const maxAbs = Math.max(...netChange.map(Math.abs));
+
+  const wrap = document.getElementById('netChangeChart');
+  const labWrap = document.getElementById('netChangeLabels');
+
+  wrap.innerHTML = netChange.map((v,i) => {
+    const h = maxAbs ? (Math.abs(v)/maxAbs*95) : 2;
+    const color = v>=0 ? 'var(--green)' : 'var(--red)';
+    const isDown = v < 0;
+    return `
+      <div class="wf-col" style="height:110px;justify-content:center">
+        ${isDown ? `
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;width:100%;padding-top:50%">
+            <div class="wf-bar" style="height:${h}px;background:${color};opacity:0.8;border-radius:0 0 2px 2px" title="${MONTHS[i%12]}: ${fmt(v)}"></div>
+          </div>
+        ` : `
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;width:100%;padding-bottom:50%">
+            <div class="wf-bar" style="height:${h}px;background:${color};opacity:0.85" title="${MONTHS[i%12]}: ${fmt(v)}"></div>
+          </div>
+        `}
+      </div>
+    `;
+  }).join('');
+
+  const n = netChange.length;
+  labWrap.innerHTML = netChange.map((_,i) => {
+    const lbl = n > 12 ? (i%3===0 ? ALL_LABELS[i] : '') : MONTHS[i];
+    return `<div class="m-label">${lbl}</div>`;
+  }).join('');
+}
+
+// ─── COMPONENTS CHART ─────────────────────────────────────────────────────────
+function renderComponents(){
+  const wrap = document.getElementById('componentsChart');
+
+  let opTotal, invTotal, finTotal, revenueTotal;
+  if(currentYear==='all'){
+    opTotal = allOpCash.reduce((s,v)=>s+v,0);
+    invTotal = [2026,2027,2028].reduce((s,yr)=>s+raw[yr].invCash.reduce((a,b)=>a+b,0),0);
+    finTotal = 0;
+    revenueTotal = allRevenue.reduce((s,v)=>s+v,0);
+  } else {
+    const d = raw[currentYear];
+    opTotal = d.opCash.reduce((s,v)=>s+v,0);
+    invTotal = d.invCash.reduce((s,v)=>s+v,0);
+    finTotal = 0;
+    revenueTotal = d.revenue.reduce((s,v)=>s+v,0);
+  }
+
+  const items = [
+    { label: 'Revenue', val: revenueTotal, color: 'var(--accent)' },
+    { label: 'Operating CF', val: opTotal, color: opTotal>=0?'var(--green)':'var(--red)' },
+    { label: 'Investing CF', val: invTotal, color: 'var(--yellow)' },
+    { label: 'Financing CF', val: finTotal, color: 'var(--neutral)' },
+  ];
+
+  const maxAbs = Math.max(...items.map(it=>Math.abs(it.val)));
+
+  wrap.innerHTML = items.map(it => {
+    const w = maxAbs ? Math.abs(it.val)/maxAbs*100 : 0;
+    const neg = it.val < 0;
+    return `
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+          <span style="color:var(--muted)">${it.label}</span>
+          <span style="color:${it.color}">${fmtRaw(it.val)}</span>
+        </div>
+        <div style="background:var(--border);border-radius:2px;height:6px;overflow:hidden;position:relative">
+          ${neg ? `<div style="position:absolute;right:0;width:${w}%;height:100%;background:${it.color};opacity:0.8;border-radius:2px"></div>` : `<div style="width:${w}%;height:100%;background:${it.color};opacity:0.85;border-radius:2px"></div>`}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── CF TABLE ─────────────────────────────────────────────────────────────────
+function renderCFTable(){
+  const table = document.getElementById('cfTable');
+  const years = [2026,2027,2028];
+  
+  const sections = [
+    { label: 'OPERATING ACTIVITIES', rows: [
+      { label: 'Total Revenue', key: 'revenue' },
+      { label: 'Net cash from operations', key: 'opCash', total: true },
+    ]},
+    { label: 'INVESTING ACTIVITIES', rows: [
+      { label: 'Net cash from investing', key: 'invCash', total: true },
+    ]},
+    { label: 'FINANCING ACTIVITIES', rows: [
+      { label: 'Net cash from financing', key: 'finCash', total: true },
+    ]},
+    { label: 'CASH POSITION', rows: [
+      { label: 'Net cash change', key: 'netChange', total: true },
+      { label: 'Opening cash balance', key: 'cashBegin' },
+      { label: 'Closing cash balance', key: 'cashEnd', total: true },
+    ]},
+  ];
+
+  function sum(arr){ return arr.reduce((s,v)=>s+(v||0),0); }
+
+  let html = `<thead><tr><th>Cash Flow Summary</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead><tbody>`;
+
+  for(const section of sections){
+    html += `<tr class="divider"><td colspan="4"></td></tr>`;
+    html += `<tr><td colspan="4" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:10px 14px 4px;background:var(--bg)">${section.label}</td></tr>`;
+    for(const row of section.rows){
+      const vals = years.map(yr => {
+        const d = raw[yr];
+        return sum(d[row.key]);
+      });
+      const rowClass = row.total ? 'total-row' : '';
+      const cells = vals.map(v => {
+        const color = v>0?'pos-val':v<0?'neg-val':'';
+        return `<td class="${rowClass?'':color}">${fmtRaw(v)}</td>`;
+      }).join('');
+      html += `<tr class="${rowClass}"><td>${row.label}</td>${cells}</tr>`;
+    }
+  }
+
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+// ─── RUNWAY ────────────────────────────────────────────────────────────────────
+function renderRunway(){
+  const card = document.getElementById('runwayCard');
+
+  // When does cash turn positive for each year?
+  const analysis = [2026,2027,2028].map(yr => {
+    const d = raw[yr];
+    const firstPos = d.cashEnd.findIndex(v=>v>0);
+    const min = Math.min(...d.cashEnd);
+    const end = d.cashEnd[11];
+    return { yr, firstPos, min, end };
+  });
+
+  const globalFirstPos = allCashEnd.findIndex(v=>v>0);
+  const globalMin = Math.min(...allCashEnd);
+
+  let bars = [2026,2027,2028].map(yr => {
+    const d = raw[yr];
+    const negMonths = d.cashEnd.filter(v=>v<0).length;
+    const pct = negMonths/12;
+    const color = negMonths===12?'var(--red)':negMonths>6?'var(--yellow)':'var(--green)';
+    return `
+      <div style="margin-bottom:14px">
+        <div class="runway-label" style="margin-bottom:6px">${yr} — ${negMonths} of 12 months negative</div>
+        <div class="runway-track">
+          <div class="runway-fill" style="width:${(1-pct)*100}%;background:${color}"></div>
+        </div>
+        <div class="runway-months">
+          <span style="color:${color}">${12-negMonths} months positive</span>
+          <span>Peak need: ${fmt(Math.min(...d.cashEnd))}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="runway-label">Cash Positive Coverage by Year</div>
+    ${bars}
+    <div style="font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      Cash turns positive: <span style="color:var(--accent)">${globalFirstPos>=0 ? ALL_LABELS[globalFirstPos]+' (month '+(globalFirstPos+1)+')' : 'Not within 36M'}</span><br>
+      Total peak funding need: <span style="color:var(--red)">${fmt(globalMin)}</span>
+    </div>
+  `;
+}
+
+// ─── ALERTS ────────────────────────────────────────────────────────────────────
+function renderAlerts(){
+  const card = document.getElementById('alertsCard');
+  const globalMin = Math.min(...allCashEnd);
+  const firstPos = allCashEnd.findIndex(v=>v>0);
+  const endCash2028 = allCashEnd[35];
+
+  card.innerHTML = `
+    <div class="alert red">
+      ⚠ Peak cash deficit of <strong>${fmt(globalMin)}</strong> reached in Sep 2026. A working capital facility or bridge funding of ~€60K is needed to cover this period.
+    </div>
+    <div class="alert yellow">
+      ↗ Cash turns positive for the first time in <strong>${firstPos>=0?ALL_LABELS[firstPos]:'month '+(firstPos+1)}</strong>. Growth Package client ramp in mid-2027 is the critical driver.
+    </div>
+    <div class="alert green">
+      ✓ By end of 2028, cash position reaches <strong>${fmt(endCash2028)}</strong>. The business becomes strongly cash-generative once the client base exceeds ~12 recurring clients.
+    </div>
+    <div class="alert green">
+      ✓ Operating cash flow is <strong>positive from 2027 onwards</strong> (€217K), with 2028 generating €692K in operating cash — indicating a healthy, scalable model.
+    </div>
+  `;
+}
+
+// ─── RENDER ALL ────────────────────────────────────────────────────────────────
+function render(){
+  renderSummary();
+  renderCashLine();
+  renderNetChange();
+  renderComponents();
+  renderCFTable();
+  renderRunway();
+  renderAlerts();
+}
+
+render();
+</script>
+</body>
+</html>
